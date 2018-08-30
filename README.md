@@ -1,1 +1,1 @@
-# Reiknigreind2018
+# Reiknigreind 2018 - Python scripts
