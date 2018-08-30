@@ -64,7 +64,7 @@ def learnit(numgames, epsilon, alpha, debug=False):
             s[player - 1] = hashit(state) # store this new state for player
             player = getotherplayer(player) # swap players
 
-# do trails here, note because we initialize everything to 0.5 we don't need
+# do trials here, note because we initialize everything to 0.5 we don't need
 # to update for draws 
 value = np.ones(hashit(2 * np.ones(9))) / 2.0
 alpha = 0.1
