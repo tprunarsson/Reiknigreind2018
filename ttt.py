@@ -1,15 +1,17 @@
 import numpy as np
 
-def hashit(state):
-    base3 = np.matmul(np.power(3, range(0, 9)), state.transpose())
+def hashit(board):
+    base3 = np.matmul(np.power(3, range(0, 9)), board.transpose())
     return int(base3)
 
 def legal_moves(board):
     return np.where(board == 0)[0]
 
-def epsilongreedy(board, player, epsilon):
+def epsilongreedy(board, player, epsilon, debug = False):
     moves = legal_moves(board)
     if (np.random.uniform() < epsilon):
+        if (1 == debug):
+            print("explorative move")
         return np.random.choice(moves, 1)
     na = np.size(moves)
     va = np.zeros(na)
@@ -35,7 +37,7 @@ def getotherplayer(player):
         return 2
     return 1
 
-def learnit(numgames, epsilon, alpha, debug=False):
+def learnit(numgames, epsilon, alpha, debug = False):
     # play games for training
     for games in range(0, numgames):
         board = np.zeros(9)          # initialize the board
@@ -45,7 +47,7 @@ def learnit(numgames, epsilon, alpha, debug=False):
         # start turn playing game, maximum 9 moves
         for move in range(0, 9):
             # use a policy to find action
-            action = epsilongreedy(np.copy(board), player, epsilon)
+            action = epsilongreedy(np.copy(board), player, epsilon, debug)
             # perform move and update board (for other player)
             board[action] = player
             # print the board, when in debug mode
@@ -61,20 +63,20 @@ def learnit(numgames, epsilon, alpha, debug=False):
                 value[sold[getotherplayer(player)]] = 0.0 # looser (reward zero)
                 break
             # do a temporal difference update, once both players have made at least one move
-            if (move > 1):
+            if (1 < move):
                 value[sold[player]] = value[sold[player]] + alpha * (value[hashit(board)] - value[sold[player]])
             sold[player] = hashit(board) # store this new state for player
             # check if we have a draw, then set the final states for both players to 0.5
-            if (move == 8):
+            if (8 == move):
                 value[sold] = 0.5 # draw (equal reward for both)
             player = getotherplayer(player) # swap players
 
 # global after-state value function, note this table is too big and contrains states that
 # will never be used, also each state is unique to the player (no one after-state seen by both players) 
-value = np.ones(hashit(2 * np.ones(9))) / 2.0
+value = np.ones(hashit(2 * np.ones(9))) / 1.0
 alpha = 0.1 # step size
 epsilon = 0.1 # exploration parameter
-# train the value function
+# train the value function using 10000 games
 learnit(10000, epsilon, alpha)
 # play one game determinstically using the value function
-learnit(1, 0, 0, True)
+learnit(1, 0.1, 0, True)
