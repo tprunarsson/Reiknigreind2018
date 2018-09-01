@@ -49,14 +49,12 @@ def learnit(numgames, epsilon, alpha, debug = False):
             # use a policy to find action
             action = epsilongreedy(np.copy(board), player, epsilon, debug)
             # perform move and update board (for other player)
-            board[action] = player
-            # print the board, when in debug mode
-            if debug:
+            board[action] = player            
+            if debug: # print the board, when in debug mode
                 symbols = np.array([" ", "X", "O"])
                 print("player ", symbols[player], ", move number ", move+1, ":")
                 print(symbols[board.astype(int)].reshape(3,3))
-            # has this player won?
-            if (1 == iswin(board, player)):
+            if (1 == iswin(board, player)): # has this player won?
                 value[sold[player]] = value[sold[player]] + alpha * (1.0 - value[sold[player]])
                 sold[player] = hashit(board) # index to winning state
                 value[sold[player]] = 1.0 # winner (reward one)
@@ -78,5 +76,7 @@ alpha = 0.1 # step size
 epsilon = 0.1 # exploration parameter
 # train the value function using 10000 games
 learnit(10000, epsilon, alpha)
-# play one game determinstically using the value function
+# play one game deterministically using the value function
+learnit(1, 0, 0, True)
+# play one game with explorative moves using the value function
 learnit(1, 0.1, 0, True)
