@@ -53,18 +53,16 @@ def getfeatures(board):
 
     features = np.hstack((features_player, features_otherplayer, theboard))
     features = np.hstack((theboard))
-# the features are linearly dependent for some reason, so removing the last position on the board somehow fixes this
-# I have not yet got my head around this
+  # the raw board features are linearly dependent, obviously as the board fills the last empty space is determined
+  # here I just remove the last raw board position :-1
     features = features[:-1]
     return features
-
 
 def sigmoid (a):
     return(np.exp(a) / (1.0+np.exp(a)))
 
 def dsigmoid (a):
     return(sigmoid(a)*(1-sigmoid(a)))
-
 
 # this is the improving policy used by player
 def epsilonfunctiongreedy(board, player, epsilon, weights, debug = False):
@@ -160,7 +158,6 @@ def learnit_fcn_approx(numgames, epsilon, alpha, weights, debug = False):
                     delta = (sigmoid(np.matmul(phiold, weights[1:]) + weights[0]) - 0)
                     weights[1:] = weights[1:] - alpha * delta * dsigmoid(np.matmul(phiold, weights[1:]) + weights[0]) * weights[1:]
                     weights[0] = weights[0] - alpha * delta * dsigmoid(np.matmul(phiold, weights[1:]) + weights[0]) * 1
-
                 break
             # do a temporal difference update, once both players have made at least one move
             if (1 < move) & (player == 1):
@@ -238,12 +235,12 @@ V = np.zeros((M))
 for i in range(M):
     PHI[i,] = np.concatenate( (np.ones(1), getfeatures(np.copy(BOARD[I[i],]))) )
     V[i] = value[I[i]]
-# check the rank of this matrix (I had some problems with it)
+# check the rank of this matrix 
 np.linalg.matrix_rank(np.matmul(PHI.T,PHI))
 
 weights = la.solve(PHI.T @ PHI, PHI.T @ V)
 
-# remove the bias above:
+# remove the bias above (its included in R):
 PHI = PHI[:,1:]
 
 # how about using R from Python?
@@ -260,34 +257,34 @@ data_pd_df = pd.DataFrame(VandPHI ,columns = cols)
 pandas2ri.activate()
 data_r_df = pandas2ri.py2ri(data_pd_df)
 
+# load packaged from within R
 stats = rpackages.importr('stats')
 base = rpackages.importr('base')
 mass=rpackages.importr('MASS')
 
-
+# here is how you do simple regression in R
 model = stats.lm('Y ~ .', data=data_r_df)
 print(base.summary(model).rx2('coefficients'))
 weights = np.array(stats.coefficients(model))
-
-#weights = base.summary(model).rx2('coefficients')[0:N]
+# compute the mse for this linear model
 Vhat = np.matmul(np.concatenate((np.ones((M,1)),PHI), axis = 1),weights)
 mse=((V-Vhat.T)**2).mean()
-
+# lets try logistic regression, here we use glm
 glmodel = stats.glm('Y ~ .', data=data_r_df, family = "binomial")
 print(base.summary(glmodel).rx2('coefficients'))
-aic=mass.stepAIC(glmodel, trace = False)
+# we could use AIC criteria to reduce our feature set
+aic = mass.stepAIC(glmodel, trace = False)
 print(aic.rx2('anova'))
-
-#lmweights = base.summary(glmodel).rx2('coefficients')[0:N]
+# evaluate the mse for the glm
 lmweights = np.array(stats.coefficients(glmodel))
-
 Vprobs = stats.predict(glmodel, data = data_r_df, type = "response")
 mse_glm = ((V-Vprobs)**2).mean()
-
+# instead of using "predict" we could just compute the valuse like this then:
 Vlmhat = np.matmul(np.concatenate((np.ones((M,1)),PHI), axis = 1),lmweights)
 Vlmhat = np.exp(Vlmhat)/(np.exp(Vlmhat)+1.0)
 mselm = ((V-Vlmhat.T)**2).mean()
 
+# OK, lets compete against the table
 wins_for_player_1 = 0
 draw_for_players = 0
 loss_for_player_1 = 0
@@ -303,9 +300,9 @@ for j in range(competition_games):
              
 print(wins_for_player_1, draw_for_players, loss_for_player_1)
 
-
+# lets try to improve our value function by playing against payer 2
 learnit_fcn_approx(training_steps, epsilon, alpha, lmweights)
-
+# and compete again:
 wins_for_player_1 = 0
 draw_for_players = 0
 loss_for_player_1 = 0
@@ -320,7 +317,8 @@ for j in range(competition_games):
         loss_for_player_1 += 1.0
 
 print(wins_for_player_1, draw_for_players, loss_for_player_1)
-    
+
+# what is we learned from scratch, i.e. let weights = np.zeros( ...
 weights = 0*weights
 learnit_fcn_approx(training_steps, epsilon, alpha, weights)
 
@@ -338,4 +336,5 @@ for j in range(competition_games):
         loss_for_player_1 += 1.0
 
 print(wins_for_player_1, draw_for_players, loss_for_player_1)
-    
+
+# seems to be a good idea to start with good weights !?
